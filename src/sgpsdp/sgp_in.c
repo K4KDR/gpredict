@@ -112,9 +112,14 @@ void Convert_Satellite_Data(char *tle_set, tle_t * tle)
     char            buff[15];
 
     /* Satellite's catalogue number */
+
+  /*
     strncpy(buff, &tle_set[2], 5);
     buff[5] = '\0';
     tle->catnr = atoi(buff);
+    */
+
+  tle->catnr = decode_alpha5_catnr(&tle_set[2]);
 
     /* International Designator for satellite */
     strncpy(tle->idesg, &tle_set[9], 8);
@@ -326,6 +331,37 @@ int Get_Next_Tle_Set(char line[3][80], tle_t * tle)
         return (-2);
 
     /* Convert the TLE set to orbital elements */
+
+  /* from ChatGPT to allow ALPHA characters in Object ID's */
+
+  static int
+decode_alpha5_catnr(const char field[5])
+{
+    static const char alpha5[] = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const char *p;
+    int suffix;
+    int i;
+
+    for (i = 1; i < 5; i++)
+    {
+        if (field[i] < '0' || field[i] > '9')
+            return 0;
+    }
+
+    suffix = (field[1] - '0') * 1000 +
+             (field[2] - '0') * 100 +
+             (field[3] - '0') * 10 +
+             (field[4] - '0');
+
+    if (field[0] >= '0' && field[0] <= '9')
+        return (field[0] - '0') * 10000 + suffix;
+
+    p = strchr(alpha5, g_ascii_toupper(field[0]));
+    if (p == NULL)
+        return 0;
+
+    return (10 + (int)(p - alpha5)) * 10000 + suffix;
+}
     Convert_Satellite_Data(tle_set, tle);
 
     return (1);
